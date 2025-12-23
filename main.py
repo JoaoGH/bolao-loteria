@@ -1,118 +1,55 @@
-import random
-import os
-from collections import Counter
+from app.mega_sena import MegaSena
 
-NUMEROS_SELECIONADOS = [13, 6, 37, 27, 17, 31, 58, 41, 28, 10, 45, 2]
-NUMEROS_SELECIONADOS.sort()
-TOTAL_DEZENAS_JOGO = 7
-VALOR_JOGO = 35
-MAX_REPETIDOS = 0
-total_repetidos = 0
-numeros_globais = []
 
-def select_total_jogos(total_pessoas):
-    opcoes = []
-    for i, it in enumerate(range(1, total_pessoas)):
-        valor = VALOR_JOGO * it
-        valor_pessoa = valor / total_pessoas
-        indicado = (" - INDICADO " if valor_pessoa.is_integer() else "")
-        print("\nOpcao {} {}".format(i+1, indicado))
-        print("------------------------------------")
-        print("Fazendo {} jogos de 7 DEZENAS sai por R$ {} no total.".format(it, f"{valor: .2f}"))
-        print("Valor por pessoa: R$ " + f"{valor_pessoa: .2f}")
-        print("------------------------------------")
-        opcoes.append([it, valor, valor_pessoa])
-    
-    print('\n')
-    opc = int(input("Seleciona opção e jogo: "))
-    
-    return opcoes[opc - 1]
+def main():
+    NUMEROS_SELECIONADOS = [13, 6, 37, 27, 17, 31, 58, 41, 28, 10, 45, 2]
+    NUMEROS_SELECIONADOS.sort()
 
-def criar_jogos(total_jogos, numeros_jogados):
-    for _ in range(0,total_jogos):
-        random.shuffle(numeros_jogados)
-    
-    tamanho_grupo = len(numeros_jogados) // total_jogos
-    resto = len(numeros_jogados) % total_jogos
+    print(f"Números da sorte base: {NUMEROS_SELECIONADOS}\n")
 
-    jogos = []
-    inicio = 0
-    for i in range(total_jogos):
-        fim = inicio + tamanho_grupo + (1 if i < resto else 0)
-        jogos.append(numeros_jogados[inicio:fim])
-        inicio = fim
+    try:
+        qtd_pessoas = int(input("Total de pessoas: "))
+        qtd_dezenas = int(input("Quantas dezenas jogar: "))
+        megasena = MegaSena(NUMEROS_SELECIONADOS, qtd_dezenas)
 
-    for jogo in jogos:
-        #print(jogo)
-        completa_jogo(jogo)
-        #jogo.sort()
-        #print(jogo)
-        numeros_globais.sort()
-        #print(numeros_globais)
-        #print('-')
+        opcoes = megasena.simular_custos(qtd_pessoas)
 
-    return jogos
+        print(f"\n--- OPÇÕES DE BOLÃO ({qtd_dezenas} dezenas) ---")
+        for i, op in enumerate(opcoes):
+            indicado = " <--- RECOMENDADO" if op['divisao_exata'] else ""
+            print(f"Opcao {i + 1:02d} {indicado}")
+            print(f"Fazendo {op['jogos']} jogo(s) de {qtd_dezenas} DEZENAS sai por R$ {op['total']:.2f} no total.")
+            print("Valor por pessoa: R$ " + f"{op['por_pessoa']: .2f}")
+            print("------------------------------------\n")
 
-def completa_jogo(jogo):
-    permite_sequencia = True
+        escolha = int(input("\nDigite o número da Opção desejada: "))
 
-    while len(jogo) < TOTAL_DEZENAS_JOGO:
-        numero_randomico = get_novo_numero(jogo, permite_sequencia)
-        
-        if numero_randomico + 1 in jogo or numero_randomico - 1 in jogo:
-            permite_sequencia = False
-        
-        jogo.append(numero_randomico)
+        if escolha <= 1 or escolha >= len(opcoes):
+            raise ValueError("Opção inválida.")
 
-    numeros_globais.extend(jogo)
+        opcao_selecionada = opcoes[escolha - 1]
+        qtd_jogos = opcao_selecionada['jogos']
+        print(f"\nGerando {qtd_jogos} jogos...")
+        jogos_gerados = megasena.gerar_bolao(qtd_jogos)
 
-    return jogo
+        print("\n" + "=" * 40)
+        print(f"   JOGOS GERADOS ({qtd_dezenas} Dezenas)")
+        print("=" * 40)
 
-def get_novo_numero(numeros_jogados, permite_sequencia):    
-    while True:
-        n = random.randint(1, 60)
-        for _ in range(10):
-            n = random.randint(1, 60)
-        
-        if n in NUMEROS_SELECIONADOS:
-            continue
+        for i, jogo in enumerate(jogos_gerados):
+            jogo_formatado = ", ".join(f"{n:02d}" for n in jogo)
+            print(f"Jogo {i + 1:02d}: [{jogo_formatado}]")
 
-        if n in numeros_jogados:
-            continue
-        
-        if n in numeros_globais:
-            continue
+        print("-" * 40)
+        print(f"Custo Total: R$ {opcao_selecionada['total']:.2f}")
+        print(f"Por Pessoa:  R$ {opcao_selecionada['por_pessoa']:.2f}")
+        print("=" * 40)
 
-        mesma_dezena_count = sum(1 for x in numeros_jogados if x // 10 == n // 10)
-        if mesma_dezena_count > 1:
-            continue
+    except ValueError as e:
+        print(f"\nErro de valor: {e}")
+    except Exception as e:
+        print(f"\nErro inesperado: {e}")
 
-        mesma_unidade = Counter(x % 10 for x in numeros_jogados)[n%10]
-        if mesma_unidade > 1:
-            continue
 
-        if permite_sequencia == False and (n + 1 in numeros_jogados or n - 1 in numeros_jogados):
-            continue
-
-        return n
-
-pessoas = int(input("Total de pessoas: "))
-total_jogos, valor_total, valor = select_total_jogos(pessoas)
-
-MAX_REPETIDOS = total_jogos
-
-os.system('cls')
-
-print("Total de jogos feitos: {}".format(total_jogos))
-print("Total de pessoas jogando: {}".format(pessoas))
-print("Numeros pre selecionados: {}".format(NUMEROS_SELECIONADOS))
-print("Valor total: R$ {}".format(f"{valor_total: .2f}"))
-print("Valor por pessoa: R$ {}".format(f"{valor: .2f}"))
-
-numeros_jogados = []
-jogos = criar_jogos(total_jogos, NUMEROS_SELECIONADOS)
-print('\nJogos:')
-for i, jogo in enumerate(jogos):
-    jogo.sort()
-    numeros_jogados.extend(jogo)
-    print("Jogo {}: {}".format(i + 1, jogo))
+if __name__ == '__main__':
+    main()
